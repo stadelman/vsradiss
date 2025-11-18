@@ -1,0 +1,1817 @@
+---
+title: "Stadelman Dissertation_Draft"
+author: "Suzie Stadelman"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+format: 
+  html:
+    toc: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+---
+
+## Load Packages
+
+```{r include=FALSE}
+
+library(rio)
+library(here)
+library(tidyverse)
+library(janitor)
+library(dplyr)
+library(skimr)
+library(tidyr)
+library(kableExtra)
+library(ggrepel)
+library(gridExtra)
+
+
+```
+
+## Load Data
+
+```{r}
+
+#Time 1 Data
+
+time1raw <- import(here("Data", "Time 1", "SAVS_Time1_Raw.xlsx")) %>% as_tibble()
+
+#Time 2 Data
+
+time2raw <- import(here("Data", "Time 2", "SAVS_Time2_Raw.xlsx")) %>% as_tibble()
+```
+
+## Clean Time 1
+
+```{r}
+
+view(time1raw)
+
+time1clean <- time1raw %>%
+  clean_names() %>%
+  filter(!row_number() %in% c(1)) %>% #removed extra header row
+  filter(!row_number() %in% c(1)) %>% #removed test response of survey
+  select(-c(start_date, end_date, status, ip_address, progress, duration_in_seconds, finished, recorded_date, response_id, recipient_last_name, recipient_first_name, recipient_email, external_reference, location_latitude, location_longitude, distribution_channel, user_language)) %>% #removed columns Qualtrics auto generates
+  rename(id = q3,
+         site = q2,
+         feas1 = q4,
+         feas1_count = q18,
+         feas1_ee = q19,
+         feas2 = q16,
+         feas2_count = q20,
+         feas2_ee = q21, 
+         rct = q17,
+         rct_count = q22,
+         rct_ee = q23,
+         demo_race = q5,
+         demo_gender = q6,
+         demo_clin = q7, 
+         demo_clin_deg = q8,
+         demo_clin_exp = q9, 
+         comp1_attitude = q10_1,
+         comp2_engage = q10_2,
+         comp3_collab = q10_3,
+         comp4_emergcont = q10_4,
+         comp5_asksi = q10_5, 
+         comp6_risklevel = q10_6,
+         comp7_response = q10_7,
+         comp8_university = q10_8, 
+         comp9_regional = q10_9,
+         comp10_selfcare = q10_10,
+         aim_approve = q11_1,
+         aim_appeal = q11_2,
+         aim_like = q11_3,
+         aim_welcome = q11_4, 
+         iam_fit = q12_1,
+         iam_suitable = q12_2,
+         iam_applicable = q12_3,
+         iam_match = q12_4,
+         iam_approppop = q12_5, 
+         fim_implement = q13_1,
+         fim_possible = q13_2,
+         fim_doable = q13_3,
+         fim_easy = q13_4,
+         fim_facilitate = q13_5) %>% #renamed column names
+  mutate(site = recode(site,
+                       Rutgers = "University 2",
+                       `University of Nevada-Reno` = "University 3",
+                       Duke = "University 1",
+                       `University of Oregon` = "University 4")) %>% #renamed sites to deidentify
+  mutate(across(starts_with('comp'),
+        ~recode(.,
+         "Completely Incompetent" = 1,
+         "Incompetent" = 2,
+         "Neither Competent nor Incompetent" = 3,
+         "Competent" = 4,
+         "Completely Competent" = 5))) %>% #recoded from string to numeric
+  mutate(across(starts_with('aim'),
+        ~recode(.,
+         "Completely Disagree" = 1,
+         "Disagree" = 2,
+         "Neither Agree nor Disagree" = 3,
+         "Agree" = 4,
+         "Completely Agree" = 5))) %>% #recoded from string to numeric
+  mutate(across(starts_with("iam"),
+        ~recode(.,
+         "Completely Disagree" = 1,
+         "Disagree" = 2,
+         "Neither Agree nor Disagree" = 3,
+         "Agree" = 4,
+         "Completely Agree" = 5))) %>% #recoded from string to numeric
+  mutate(across(starts_with('fim'),
+        ~recode(.,
+         "Completely Disagree" = 1,
+         "Disagree" = 2,
+         "Neither Agree nor Disagree" = 3,
+         "Agree" = 4,
+         "Completely Agree" = 5))) #recoded from string to numeric
+
+
+#skim(time1clean)
+
+```
+
+## Clean Time 2
+
+```{r}
+
+view(time2raw)
+
+time2clean <- time2raw %>%
+  clean_names() %>%
+   filter(!row_number() %in% c(1)) %>% #removed extra header row
+   select(-c(start_date, end_date, status, ip_address, progress, duration_in_seconds, finished, recorded_date, response_id, recipient_last_name, recipient_first_name, recipient_email, external_reference, location_latitude, location_longitude, distribution_channel, user_language)) %>% #removed columns Qualtrics auto generates
+  rename(id = q3,
+         assess_t2_count = q22,
+         assess_t2_ee = q23,
+         comp1_attitude = q10_1,
+         comp2_engage = q10_2,
+         comp3_collab = q10_3,
+         comp4_emergcont = q10_4,
+         comp5_asksi = q10_5, 
+         comp6_risklevel = q10_6,
+         comp7_response = q10_7,
+         comp8_university = q10_8, 
+         comp9_regional = q10_9,
+         comp10_selfcare = q10_10,
+         aim_approve = q11_1,
+         aim_appeal = q11_2,
+         aim_like = q11_3,
+         aim_welcome = q11_4, 
+         iam_fit = q12_1,
+         iam_suitable = q12_2,
+         iam_applicable = q12_3,
+         iam_match = q12_4,
+         iam_approppop = q12_5, 
+         fim_implement = q13_1,
+         fim_possible = q13_2,
+         fim_doable = q13_3,
+         fim_easy = q13_4,
+         fim_facilitate = q13_5) %>% #renamed column names
+   mutate(across(starts_with('comp'),
+        ~recode(.,
+         "Completely Incompetent" = 1,
+         "Incompetent" = 2,
+         "Neither Competent nor Incompetent" = 3,
+         "Competent" = 4,
+         "Completely Competent" = 5))) %>% #recoded from string to numeric
+  mutate(across(starts_with('aim'),
+        ~recode(.,
+         "Completely Disagree" = 1,
+         "Disagree" = 2,
+         "Neither Agree nor Disagree" = 3,
+         "Agree" = 4,
+         "Completely Agree" = 5))) %>% #recoded from string to numeric
+  mutate(across(starts_with("iam"),
+        ~recode(.,
+         "Completely Disagree" = 1,
+         "Disagree" = 2,
+         "Neither Agree nor Disagree" = 3,
+         "Agree" = 4,
+         "Completely Agree" = 5))) %>% #recoded from string to numeric
+  mutate(across(starts_with('fim'),
+        ~recode(.,
+         "Completely Disagree" = 1,
+         "Disagree" = 2,
+         "Neither Agree nor Disagree" = 3,
+         "Agree" = 4,
+         "Completely Agree" = 5))) #recoded from string to numeric
+
+#skim(time2clean)
+
+```
+
+## Demographic Basic Frequency Tables
+
+### Site
+
+```{r, echo=FALSE}
+
+#table(time1clean$site)
+
+time1clean |>
+  count(site, name = "Count") |>
+  mutate(Percent = Count / sum(Count) * 100,
+         Percent = round(Percent, 1)) |>     # round to 1 decimal place
+  kbl(col.names = c("Site", "Count", "Percent (%)"),
+      align = "lcc") |>
+  kable_classic(full_width = FALSE)
+
+
+
+```
+
+### Race and Ethnicity
+
+```{r}
+
+time1clean %>%
+  separate_rows(demo_race, sep = ",") %>%
+  mutate(demo_race = trimws(demo_race)) %>%
+  count(demo_race, name = "Count") %>%
+  mutate(Percent = round(Count / sum(Count) * 100, 1)) %>%
+  kbl(col.names = c("Race & Ethnicity", "Count", "Percent (%)"),
+      align = "lcc") %>%
+  kable_classic(full_width = FALSE) %>%
+  footnote(
+    general = "Note: Participants were allowed to select more than one race/ethnicity option.",
+    general_title = ""
+  )
+
+
+```
+
+### Gender
+
+```{r}
+
+#table(time1clean$demo_gender)
+
+time1clean |>
+  count(demo_gender, name = "Count") |>
+  mutate(Percent = Count / sum(Count) * 100,
+         Percent = round(Percent, 1)) |>     # round to 1 decimal place
+  kbl(col.names = c("Gender", "Count", "Percent (%)"),
+      align = "lcc") |>
+  kable_classic(full_width = FALSE)
+
+```
+
+### Clinical Experience
+
+```{r}
+
+#table(time1clean$demo_clin)
+
+#Clinical Experience: Yes/No
+
+time1clean %>%
+  count(demo_clin, name = "Count") %>%
+  mutate(
+    Percent = round(100 * Count / sum(Count), 1)
+  ) %>%
+  kbl(
+    col.names = c("Clinical Background", "Count", "Percent (%)"),
+    align = "lcc",
+    caption = "Table 1. Clinical Background of Participants"
+  ) %>%
+  kable_classic(full_width = FALSE)
+
+
+#If yes: Degree and Years of Experience
+
+#table(time1clean$demo_clin_deg)
+
+#table(time1clean$demo_clin_exp)
+
+
+
+# Define the desired order for degrees
+degree_levels <- c("Master's Degree (MA, MS, MEd, MSW, etc.)", "Doctorate Degree (PhD, PsyD, etc.)")
+
+# Define the desired order for years of experience
+exp_levels <- c("Unlicensed trainee for 1-3 years", "Unlicensed trainee 3 or more years", "Licensed clinician 1-3 years", "Licensed clinician 5-9 years")
+
+# Degree breakdown (ordered)
+deg_table <- time1clean %>%
+  filter(demo_clin == "Yes") %>%
+  mutate(demo_clin_deg = factor(demo_clin_deg, levels = degree_levels)) %>%
+  count(demo_clin_deg, name = "Count") %>%
+  mutate(
+    Percent = round(100 * Count / sum(Count), 1),
+    Variable = "Highest Degree"
+  ) %>%
+  select(Variable, Category = demo_clin_deg, Count, Percent)
+
+# Experience breakdown (ordered)
+exp_table <- time1clean %>%
+  filter(demo_clin == "Yes") %>%
+  mutate(demo_clin_exp = factor(demo_clin_exp, levels = exp_levels)) %>%
+  count(demo_clin_exp, name = "Count") %>%
+  mutate(
+    Percent = round(100 * Count / sum(Count), 1),
+    Variable = "Years of Experience"
+  ) %>%
+  select(Variable, Category = demo_clin_exp, Count, Percent)
+
+# Combine degree and experience tables
+clin_detail_table <- bind_rows(deg_table, exp_table) %>%
+  group_by(Variable) %>%
+  mutate(Variable = ifelse(row_number() == 1, Variable, "")) %>%  # only keep first occurrence
+  ungroup()
+
+# Render table
+clin_detail_table %>%
+  kbl(
+    col.names = c("Variable", "Category", "Count", "Percent (%)"),
+    align = "llcc",  # <-- left-align Variable & Category, center Count & Percent
+    caption = "Table 2. Clinical Background Details (Among Participants with Clinical Background)"
+  ) %>%
+  kable_classic(full_width = FALSE) %>%
+  footnote(
+    general = "Note: Only participants who reported having a clinical background are included.",
+    general_title = ""
+  )
+
+
+
+```
+
+## Time 1 Competency Histograms with Means and SDs
+
+5-point Likert scale: 1= Completely incompetent, 2= Incompetent, 3= Neither competent nor incompetent, 4= Competent, and 5= Completely competent.
+
+```{r}
+
+
+# ---------------------------
+# 1. Convert to long format
+# ---------------------------
+time1_long <- time1clean %>%
+  select(comp1_attitude:comp10_selfcare) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "competency",
+    values_to = "score"
+  )
+
+# ---------------------------
+# 2. Optional: nicer labels for facets
+# ---------------------------
+competency_labels <- c(
+  comp1_attitude = "1. Attitude",
+  comp2_engage = "2. Engage",
+  comp3_collab = "3. Collab",
+  comp4_emergcont = "4. Emergency Contact",
+  comp5_asksi = "5. Asking About STBs",
+  comp6_risklevel = "6. Determining Risk",
+  comp7_response = "7. Response to Crisis",
+  comp8_university = "8. University Resource",
+  comp9_regional = "9. Regional/National Resource",
+  comp10_selfcare = "10. Debrief/Self-Care"
+)
+
+time1_long$competency <- factor(
+  time1_long$competency,
+  levels = names(competency_labels),
+  labels = competency_labels
+)
+
+# ---------------------------
+# 3. Compute means and SDs with y_max for label placement
+# ---------------------------
+summary_stats <- time1_long %>%
+  group_by(competency) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),  # rough estimate of max count for text placement
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Facet-wrapped histograms with mean and SD
+# ---------------------------
+ggplot(time1_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "skyblue",
+    color = "black"
+  ) +
+  # Red dashed mean line
+  geom_vline(
+    data = summary_stats,
+    aes(xintercept = mean),
+    color = "navy",
+    linetype = "dashed"
+  ) +
+  # Mean ± SD text at top-left of each facet
+  geom_text(
+    data = summary_stats,
+    aes(
+      x = 2,              # place near the left end of x-axis
+      y = Inf,            # top of the panel
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 1.1,         # shift slightly to the left so it’s inside the panel
+    vjust = 1.2,         # shift slightly down
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~competency, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 1 Competency Ratings with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal()
+
+
+
+
+
+
+```
+
+## Time 2 Competency Histograms with Mean and SD Tables
+
+5-point Likert scale: 1= Completely incompetent, 2= Incompetent, 3= Neither competent nor incompetent, 4= Competent, and 5= Completely competent.
+
+```{r}
+
+# ---------------------------
+# 1. Convert to long format
+# ---------------------------
+time2_long <- time2clean %>%
+  select(comp1_attitude:comp10_selfcare) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "competency",
+    values_to = "score"
+  )
+
+# ---------------------------
+# 2. Optional: nicer labels for facets
+# ---------------------------
+competency_labels <- c(
+  comp1_attitude = "1. Attitude",
+  comp2_engage = "2. Engage",
+  comp3_collab = "3. Collab",
+  comp4_emergcont = "4. Emergency Contact",
+  comp5_asksi = "5. Asking About STBs",
+  comp6_risklevel = "6. Determining Risk",
+  comp7_response = "7. Response to Crisis",
+  comp8_university = "8. University Resource",
+  comp9_regional = "9. Regional/National Resource",
+  comp10_selfcare = "10. Debrief/Self-Care"
+)
+
+time2_long$competency <- factor(
+  time2_long$competency,
+  levels = names(competency_labels),
+  labels = competency_labels
+)
+
+# ---------------------------
+# 3. Compute means and SDs with y_max for label placement
+# ---------------------------
+summary_stats <- time2_long %>%
+  group_by(competency) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),  # rough estimate of max count for text placement
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Facet-wrapped histograms with mean and SD
+# ---------------------------
+ggplot(time2_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "pink",
+    color = "black"
+  ) +
+  # navy dashed mean line
+  geom_vline(
+    data = summary_stats,
+    aes(xintercept = mean),
+    color = "deeppink4",
+    linetype = "dashed"
+  ) +
+  # Mean ± SD text at top-left of each facet
+  geom_text(
+    data = summary_stats,
+    aes(
+      x = 2,              # place near the left end of x-axis
+      y = Inf,            # top of the panel
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 1.1,         # shift slightly to the left so it’s inside the panel
+    vjust = 1.2,         # shift slightly down
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~competency, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 2 Competency Ratings with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal()
+
+```
+
+# T1 and T2 Compentency Comparison Visuals
+
+## Histogram
+
+
+
+```{r}
+
+# ---------------------------
+# 1. Long format for competency (both times)
+# ---------------------------
+time1_comp_long <- time1clean %>%
+  select(comp1_attitude:comp10_selfcare) %>%
+  pivot_longer(cols = everything(), names_to = "competency", values_to = "score") %>%
+  mutate(time = "Time 1")
+
+time2_comp_long <- time2clean %>%
+  select(comp1_attitude:comp10_selfcare) %>%
+  pivot_longer(cols = everything(), names_to = "competency", values_to = "score") %>%
+  mutate(time = "Time 2")
+
+comp_long <- bind_rows(time1_comp_long, time2_comp_long)
+
+# ---------------------------
+# 2. Facet labels
+# ---------------------------
+competency_labels <- c(
+  comp1_attitude = "1. Attitude",
+  comp2_engage = "2. Engage",
+  comp3_collab = "3. Collab",
+  comp4_emergcont = "4. Emergency Contact",
+  comp5_asksi = "5. Asking About STBs",
+  comp6_risklevel = "6. Determining Risk",
+  comp7_response = "7. Response to Crisis",
+  comp8_university = "8. University Resource",
+  comp9_regional = "9. Regional/National Resource",
+  comp10_selfcare = "10. Debrief/Self-Care"
+)
+
+comp_long$competency <- factor(comp_long$competency, levels = names(competency_labels), labels = competency_labels)
+
+# ---------------------------
+# 3. Compute means and SDs
+# ---------------------------
+summary_comp <- comp_long %>%
+  group_by(competency, time) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  ) %>%
+  mutate(label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2)))
+
+# ---------------------------
+# 4. Overlapping histograms with mean lines
+# ---------------------------
+histogram_plot <- ggplot(comp_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "gray80",
+    color = "black"
+  ) +
+  # Dashed mean lines per time
+  geom_vline(
+    data = summary_comp,
+    aes(xintercept = mean, color = time),
+    linetype = "dashed",
+    linewidth = 0.8  # Updated from 'size' to 'linewidth'
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  scale_color_manual(values = c("Time 1" = "navy", "Time 2" = "deeppink4")) +
+  facet_wrap(~competency, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    color = "Time",
+    title = "T1 and T2 Competency Histograms Comparison with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# 5. Create a table of means and SDs
+# ---------------------------
+summary_table <- summary_comp %>%
+  select(competency, time, mean, sd) %>%
+  mutate(across(c(mean, sd), \(x) round(x, 2))) %>%
+  # Pivot to wide format
+  pivot_wider(names_from = time, values_from = c(mean, sd)) %>%
+  rename(
+    "Competency" = competency,
+    "Mean (Time 1)" = `mean_Time 1`,
+    "SD (Time 1)" = `sd_Time 1`,
+    "Mean (Time 2)" = `mean_Time 2`,
+    "SD (Time 2)" = `sd_Time 2`
+  )
+
+# Convert table to a 'grob' (graphical object) without row numbers
+summary_table_grob <- tableGrob(summary_table, rows = NULL)
+
+# ---------------------------
+# Combine plot and table
+# ---------------------------
+grid.arrange(histogram_plot, summary_table_grob, ncol = 1, heights = c(2, 1))
+
+
+
+```
+
+## Plot
+
+
+```{r}
+
+# Add a 'time_point' column to differentiate time 1 and time 2
+time1clean$time_point <- 'Time 1'
+time2clean$time_point <- 'Time 2'
+
+# Combine both datasets into one
+combined_data <- bind_rows(time1clean, time2clean)
+
+# Reshape the combined data to long format using pivot_longer
+long_combined_data <- combined_data %>%
+  pivot_longer(cols = starts_with("comp"), 
+               names_to = "variable", 
+               values_to = "value")
+
+# Calculate the mean value for each variable at each time point
+summary_data <- long_combined_data %>%
+  group_by(time_point, variable) %>%
+  summarise(mean_value = mean(value, na.rm = TRUE), .groups = "drop")  # Remove grouping
+
+# Create a plot to visualize the average change over time for each variable
+ggplot(summary_data, aes(x = time_point, y = mean_value, group = variable, color = variable)) +
+  geom_line() + 
+  geom_point() +  # Optional: Add points to the lines
+  facet_wrap(~variable, scales = 'free_y') +  # Facet by each variable
+  theme_minimal() + 
+  labs(title = "Change in Mean Over Time for Each Competency",
+       x = "Time Point",
+       y = "Mean Value") +
+  theme(legend.position = "none")  # Optional: Remove legend
+
+
+
+```
+
+
+
+## Time 1 Implementation Outcomes with Mean and SD Tables
+
+5-point Likert scale: 1= Completely disagree, 2= Disagree, 3= Neither agree nor disagree, 4= Agree, and 5= Completely agree.
+
+
+### Acceptability
+
+```{r}
+
+# ---------------------------
+# 1. Convert to long format
+# ---------------------------
+aim_vars <- c("aim_approve", "aim_appeal", "aim_like", "aim_welcome")
+
+time1_aim_long <- time1clean %>%
+  select(all_of(aim_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "aim",
+    values_to = "score"
+  )
+
+# ---------------------------
+# 2. Optional: nicer labels for facets
+# ---------------------------
+aim_labels <- c(
+  aim_approve = "AIM 1: Approval",
+  aim_appeal  = "AIM 2: Appeal",
+  aim_like    = "AIM 3: Like",
+  aim_welcome = "AIM 4: Welcome"
+)
+
+time1_aim_long$aim <- factor(
+  time1_aim_long$aim,
+  levels = names(aim_labels),
+  labels = aim_labels
+)
+
+# ---------------------------
+# 3. Compute means and SDs
+# ---------------------------
+summary_aim <- time1_aim_long %>%
+  group_by(aim) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),  # rough estimate for text placement
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Facet-wrapped histograms with mean and SD
+# ---------------------------
+ggplot(time1_aim_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "lightgreen",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_aim,
+    aes(xintercept = mean),
+    color = "forestgreen",
+    linetype = "dashed"
+  ) +
+  geom_text(
+    data = summary_aim,
+    aes(
+      x = 1.2,
+      y = y_max * 0.95,
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~aim, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 1 AIM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# 5. Optional: Means and SDs Table
+# ---------------------------
+meansd_t1_aim <- round(
+  rbind(
+    Mean = sapply(time1clean[ , aim_vars], mean, na.rm = TRUE),
+    SD   = sapply(time1clean[ , aim_vars], sd, na.rm = TRUE)
+  ), 
+  2
+)
+print(meansd_t1_aim)
+
+
+```
+
+### Appropriateness
+
+```{r}
+
+#table(time1clean$iam_approppop)
+
+# ---------------------------
+# 1. Convert to long format
+# ---------------------------
+iam_vars <- c("iam_fit", "iam_suitable", "iam_applicable", "iam_match", "iam_approppop")
+
+time1_iam_long <- time1clean %>%
+  select(all_of(iam_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "iam",
+    values_to = "score"
+  )
+
+# ---------------------------
+# 2. Optional: nicer labels for facets
+# ---------------------------
+iam_labels <- c(
+  iam_fit = "IAM 1: Fitting",
+  iam_suitable  = "IAM 2: Suitable",
+  iam_applicable = "IAM 3: Applicable",
+  iam_match = "IAM 4: Good Match",
+  iam_approppop = "IAM 5: Appropriate for Population"
+)
+
+time1_iam_long$iam <- factor(
+  time1_iam_long$iam,
+  levels = names(iam_labels),
+  labels = iam_labels
+)
+
+# ---------------------------
+# 3. Compute means and SDs
+# ---------------------------
+summary_iam <- time1_iam_long %>%
+  group_by(iam) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),  # rough estimate for text placement
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Facet-wrapped histograms with mean and SD
+# ---------------------------
+ggplot(time1_iam_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "lightgreen",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_iam,
+    aes(xintercept = mean),
+    color = "forestgreen",
+    linetype = "dashed"
+  ) +
+  geom_text(
+    data = summary_iam,
+    aes(
+      x = 1.2,
+      y = y_max * 0.95,
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~iam, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 1 IAM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# 5. Optional: Means and SDs Table
+# ---------------------------
+meansd_t1_iam <- round(
+  rbind(
+    Mean = sapply(time1clean[ , iam_vars], mean, na.rm = TRUE),
+    SD   = sapply(time1clean[ , iam_vars], sd, na.rm = TRUE)
+  ), 
+  2
+)
+print(meansd_t1_iam)
+
+
+```
+
+
+### Feasibility
+
+```{r}
+
+#time1clean$fim_facilitate
+
+# ---------------------------
+# 1. Convert to long format
+# ---------------------------
+fim_vars <- c("fim_implement", "fim_possible", "fim_doable", "fim_easy", "fim_facilitate")
+
+time1_fim_long <- time1clean %>%
+  select(all_of(fim_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "fim",
+    values_to = "score"
+  )
+
+# ---------------------------
+# 2. Optional: nicer labels for facets
+# ---------------------------
+fim_labels <- c(
+  fim_implement = "FIM 1: Implementable",
+  fim_possible  = "FIM 2: Possible",
+  fim_doable = "FIM 3: Doable",
+  fim_easy = "FIM 4: Easy to Use",
+  fim_facilitate = "FIM 5: Facilitated the Process"
+)
+
+time1_fim_long$fim <- factor(
+  time1_fim_long$fim,
+  levels = names(fim_labels),
+  labels = fim_labels
+)
+
+# ---------------------------
+# 3. Compute means and SDs
+# ---------------------------
+summary_fim <- time1_fim_long %>%
+  group_by(fim) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),  # rough estimate for text placement
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Facet-wrapped histograms with mean and SD
+# ---------------------------
+ggplot(time1_fim_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "lightgreen",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_fim,
+    aes(xintercept = mean),
+    color = "forestgreen",
+    linetype = "dashed"
+  ) +
+  geom_text(
+    data = summary_fim,
+    aes(
+      x = 1.2,
+      y = y_max * 0.95,
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~fim, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 1 FIM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# 5. Optional: Means and SDs Table
+# ---------------------------
+meansd_t1_fim <- round(
+  rbind(
+    Mean = sapply(time1clean[ , fim_vars], mean, na.rm = TRUE),
+    SD   = sapply(time1clean[ , fim_vars], sd, na.rm = TRUE)
+  ), 
+  2
+)
+print(meansd_t1_fim)
+
+
+
+```
+
+## Time 2 Implementation Outcomes with Mean and SD Tables
+
+5-point Likert scale: 1= Completely disagree, 2= Disagree, 3= Neither agree nor disagree, 4= Agree, and 5= Completely agree.
+
+### Acceptability
+
+```{r}
+
+# ---------------------------
+# 1. Convert to long format
+# ---------------------------
+aim_vars <- c("aim_approve", "aim_appeal", "aim_like", "aim_welcome")
+
+time2_aim_long <- time2clean %>%
+  select(all_of(aim_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "aim",
+    values_to = "score"
+  )
+
+# ---------------------------
+# 2. Nicer labels
+# ---------------------------
+aim_labels <- c(
+  aim_approve = "AIM 1: Approval",
+  aim_appeal  = "AIM 2: Appeal",
+  aim_like    = "AIM 3: Like",
+  aim_welcome = "AIM 4: Welcome"
+)
+
+time2_aim_long$aim <- factor(
+  time2_aim_long$aim,
+  levels = names(aim_labels),
+  labels = aim_labels
+)
+
+# ---------------------------
+# 3. Compute means and SDs
+# ---------------------------
+summary_aim <- time2_aim_long %>%
+  group_by(aim) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Facet-wrapped histograms
+# ---------------------------
+ggplot(time2_aim_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "aquamarine",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_aim,
+    aes(xintercept = mean),
+    color = "blueviolet",
+    linetype = "dashed"
+  ) +
+  geom_text(
+    data = summary_aim,
+    aes(
+      x = 1.2,
+      y = y_max * 0.95,
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~aim, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 2 AIM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# 5. Means and SDs Table
+# ---------------------------
+meansd_t2_aim <- round(
+  rbind(
+    Mean = sapply(time2clean[ , aim_vars], mean, na.rm = TRUE),
+    SD   = sapply(time2clean[ , aim_vars], sd, na.rm = TRUE)
+  ), 
+  2
+)
+print(meansd_t2_aim)
+
+
+```
+
+### Appropriateness
+
+```{r}
+
+iam_vars <- c("iam_fit", "iam_suitable", "iam_applicable", "iam_match", "iam_approppop")
+
+time2_iam_long <- time2clean %>%
+  select(all_of(iam_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "iam",
+    values_to = "score"
+  )
+
+iam_labels <- c(
+  iam_fit = "IAM 1: Fitting",
+  iam_suitable  = "IAM 2: Suitable",
+  iam_applicable = "IAM 3: Applicable",
+  iam_match = "IAM 4: Good Match",
+  iam_approppop = "IAM 5: Appropriate for Population"
+)
+
+time2_iam_long$iam <- factor(
+  time2_iam_long$iam,
+  levels = names(iam_labels),
+  labels = iam_labels
+)
+
+summary_iam <- time2_iam_long %>%
+  group_by(iam) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  )
+
+ggplot(time2_iam_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "aquamarine",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_iam,
+    aes(xintercept = mean),
+    color = "blueviolet",
+    linetype = "dashed"
+  ) +
+  geom_text(
+    data = summary_iam,
+    aes(
+      x = 1.2,
+      y = y_max * 0.95,
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~iam, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 2 IAM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+meansd_t2_iam <- round(
+  rbind(
+    Mean = sapply(time2clean[ , iam_vars], mean, na.rm = TRUE),
+    SD   = sapply(time2clean[ , iam_vars], sd, na.rm = TRUE)
+  ), 
+  2
+)
+print(meansd_t2_iam)
+
+
+```
+
+### Feasibility
+
+```{r}
+
+fim_vars <- c("fim_implement", "fim_possible", "fim_doable", "fim_easy", "fim_facilitate")
+
+time2_fim_long <- time2clean %>%
+  select(all_of(fim_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "fim",
+    values_to = "score"
+  )
+
+fim_labels <- c(
+  fim_implement = "FIM 1: Implementable",
+  fim_possible  = "FIM 2: Possible",
+  fim_doable = "FIM 3: Doable",
+  fim_easy = "FIM 4: Easy to Use",
+  fim_facilitate = "FIM 5: Facilitated the Process"
+)
+
+time2_fim_long$fim <- factor(
+  time2_fim_long$fim,
+  levels = names(fim_labels),
+  labels = fim_labels
+)
+
+summary_fim <- time2_fim_long %>%
+  group_by(fim) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  )
+
+ggplot(time2_fim_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "aquamarine",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_fim,
+    aes(xintercept = mean),
+    color = "blueviolet",
+    linetype = "dashed"
+  ) +
+  geom_text(
+    data = summary_fim,
+    aes(
+      x = 1.2,
+      y = y_max * 0.95,
+      label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2))
+    ),
+    color = "black",
+    size = 3,
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  facet_wrap(~fim, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    title = "Time 2 FIM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+meansd_t2_fim <- round(
+  rbind(
+    Mean = sapply(time2clean[ , fim_vars], mean, na.rm = TRUE),
+    SD   = sapply(time2clean[ , fim_vars], sd, na.rm = TRUE)
+  ), 
+  2
+)
+print(meansd_t2_fim)
+
+
+
+```
+
+# T1 and T2 AIM, IAM, FIM Comparison Visuals
+
+## Histogram
+
+```{r}
+
+
+# ---------------------------
+# AIM PLOT (Time 1 & Time 2)
+# ---------------------------
+
+aim_vars <- c("aim_approve", "aim_appeal", "aim_like", "aim_welcome")
+
+# Convert to long format and add time
+time1_aim_long <- time1clean %>%
+  select(all_of(aim_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "aim", values_to = "score") %>%
+  mutate(time = "Time 1")
+
+time2_aim_long <- time2clean %>%
+  select(all_of(aim_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "aim", values_to = "score") %>%
+  mutate(time = "Time 2")
+
+aim_long <- bind_rows(time1_aim_long, time2_aim_long)
+
+# Facet labels
+aim_labels <- c(
+  aim_approve = "AIM 1: Approval",
+  aim_appeal  = "AIM 2: Appeal",
+  aim_like    = "AIM 3: Like",
+  aim_welcome = "AIM 4: Welcome"
+)
+
+aim_long$aim <- factor(aim_long$aim, levels = names(aim_labels), labels = aim_labels)
+
+# Compute means and SDs
+summary_aim <- aim_long %>%
+  group_by(aim, time) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  ) %>%
+  mutate(label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2)))
+
+# Plot
+ggplot(aim_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "gray80",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_aim,
+    aes(xintercept = mean, color = time),
+    linetype = "dashed",
+    size = 0.8
+  ) +
+  geom_text_repel(
+    data = summary_aim,
+    aes(
+      x = 1,
+      y = y_max,
+      label = label,
+      color = time
+    ),
+    inherit.aes = FALSE,
+    nudge_y = 1,
+    direction = "y",
+    segment.color = "grey50",
+    hjust = 0.5,
+    size = 3.5
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  scale_color_manual(values = c("Time 1" = "forestgreen", "Time 2" = "blueviolet")) +
+  facet_wrap(~aim, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    color = "Time",
+    title = "AIM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# IAM PLOT (Time 1 & Time 2)
+# ---------------------------
+
+iam_vars <- c("iam_fit", "iam_suitable", "iam_applicable", "iam_match", "iam_approppop")
+
+time1_iam_long <- time1clean %>%
+  select(all_of(iam_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "iam", values_to = "score") %>%
+  mutate(time = "Time 1")
+
+time2_iam_long <- time2clean %>%
+  select(all_of(iam_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "iam", values_to = "score") %>%
+  mutate(time = "Time 2")
+
+iam_long <- bind_rows(time1_iam_long, time2_iam_long)
+
+iam_labels <- c(
+  iam_fit = "IAM 1: Fitting",
+  iam_suitable = "IAM 2: Suitable",
+  iam_applicable = "IAM 3: Applicable",
+  iam_match = "IAM 4: Good Match",
+  iam_approppop = "IAM 5: Appropriate for Population"
+)
+
+iam_long$iam <- factor(iam_long$iam, levels = names(iam_labels), labels = iam_labels)
+
+summary_iam <- iam_long %>%
+  group_by(iam, time) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  ) %>%
+  mutate(label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2)))
+
+ggplot(iam_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "gray80",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_iam,
+    aes(xintercept = mean, color = time),
+    linetype = "dashed",
+    size = 0.8
+  ) +
+  geom_text_repel(
+    data = summary_iam,
+    aes(
+      x = 1,
+      y = y_max,
+      label = label,
+      color = time
+    ),
+    inherit.aes = FALSE,
+    nudge_y = 1,
+    direction = "y",
+    segment.color = "grey50",
+    hjust = 0.5,
+    size = 3.5
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  scale_color_manual(values = c("Time 1" = "forestgreen", "Time 2" = "blueviolet")) +
+  facet_wrap(~iam, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    color = "Time",
+    title = "IAM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+# ---------------------------
+# FIM PLOT (Time 1 & Time 2)
+# ---------------------------
+
+fim_vars <- c("fim_implement", "fim_possible", "fim_doable", "fim_easy", "fim_facilitate")
+
+time1_fim_long <- time1clean %>%
+  select(all_of(fim_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "fim", values_to = "score") %>%
+  mutate(time = "Time 1")
+
+time2_fim_long <- time2clean %>%
+  select(all_of(fim_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "fim", values_to = "score") %>%
+  mutate(time = "Time 2")
+
+fim_long <- bind_rows(time1_fim_long, time2_fim_long)
+
+fim_labels <- c(
+  fim_implement = "FIM 1: Implementable",
+  fim_possible = "FIM 2: Possible",
+  fim_doable = "FIM 3: Doable",
+  fim_easy = "FIM 4: Easy to Use",
+  fim_facilitate = "FIM 5: Facilitated the Process"
+)
+
+fim_long$fim <- factor(fim_long$fim, levels = names(fim_labels), labels = fim_labels)
+
+summary_fim <- fim_long %>%
+  group_by(fim, time) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    y_max = max(table(score)),
+    .groups = "drop"
+  ) %>%
+  mutate(label = paste0("M=", round(mean, 2), "\nSD=", round(sd, 2)))
+
+ggplot(fim_long, aes(x = score)) +
+  geom_histogram(
+    breaks = seq(0.5, 5.5, by = 1),
+    fill = "gray80",
+    color = "black"
+  ) +
+  geom_vline(
+    data = summary_fim,
+    aes(xintercept = mean, color = time),
+    linetype = "dashed",
+    size = 0.8
+  ) +
+  geom_text_repel(
+    data = summary_fim,
+    aes(
+      x = 1,
+      y = y_max,
+      label = label,
+      color = time
+    ),
+    inherit.aes = FALSE,
+    nudge_y = 1,
+    direction = "y",
+    segment.color = "grey50",
+    hjust = 0.5,
+    size = 3.5
+  ) +
+  scale_x_continuous(breaks = 1:5, limits = c(0.5, 5.5)) +
+  scale_color_manual(values = c("Time 1" = "forestgreen", "Time 2" = "blueviolet")) +
+  facet_wrap(~fim, ncol = 2) +
+  labs(
+    x = "Likert Score",
+    y = "Count",
+    color = "Time",
+    title = "FIM Histograms with Means and SDs",
+    caption = "Dashed line = mean score"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    plot.caption = element_text(hjust = 0, size = 9)
+  )
+
+
+
+```
+
+## Plot
+```{r}
+
+# ---------------------------
+# 1. Define your variables
+# ---------------------------
+aim_vars <- c("aim_approve", "aim_appeal", "aim_like", "aim_welcome")
+iam_vars <- c("iam_fit", "iam_suitable", "iam_applicable", "iam_match", "iam_approppop")
+fim_vars <- c("fim_implement", "fim_possible", "fim_doable", "fim_easy", "fim_facilitate")
+
+# ---------------------------
+# 2. Combine Time 1 and Time 2
+# ---------------------------
+combine_time <- function(vars, time1data, time2data, scale_name){
+  bind_rows(
+    time1data %>% select(all_of(vars)) %>% mutate(time = "Time 1", scale = scale_name),
+    time2data %>% select(all_of(vars)) %>% mutate(time = "Time 2", scale = scale_name)
+  ) %>%
+    pivot_longer(cols = all_of(vars), names_to = "item", values_to = "score")
+}
+
+aim_combined <- combine_time(aim_vars, time1clean, time2clean, "AIM")
+iam_combined <- combine_time(iam_vars, time1clean, time2clean, "IAM")
+fim_combined <- combine_time(fim_vars, time1clean, time2clean, "FIM")
+
+all_combined <- bind_rows(aim_combined, iam_combined, fim_combined)
+
+# Optional: nicer labels
+item_labels <- c(
+  aim_approve = "AIM 1: Approval", aim_appeal = "AIM 2: Appeal",
+  aim_like = "AIM 3: Like", aim_welcome = "AIM 4: Welcome",
+  iam_fit = "IAM 1: Fitting", iam_suitable = "IAM 2: Suitable",
+  iam_applicable = "IAM 3: Applicable", iam_match = "IAM 4: Good Match",
+  iam_approppop = "IAM 5: Appropriate for Population",
+  fim_implement = "FIM 1: Implementable", fim_possible = "FIM 2: Possible",
+  fim_doable = "FIM 3: Doable", fim_easy = "FIM 4: Easy to Use",
+  fim_facilitate = "FIM 5: Facilitated Process"
+)
+all_combined$item <- factor(all_combined$item, levels = names(item_labels), labels = item_labels)
+
+# ---------------------------
+# 3. Compute mean ± SD
+# ---------------------------
+summary_data <- all_combined %>%
+  group_by(scale, item, time) %>%
+  summarize(
+    mean = mean(score, na.rm = TRUE),
+    sd = sd(score, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# ---------------------------
+# 4. Multiline plot (improved for visibility)
+# ---------------------------
+
+# Ensure the scale factor is in the desired order
+summary_data$scale <- factor(summary_data$scale, levels = c("AIM", "IAM", "FIM"))
+
+# Separate the plot by scale for better comparison
+plot_aim <- ggplot(summary_data %>% filter(scale == "AIM"), aes(x = item, y = mean, color = time, group = time)) +
+  geom_point(size = 4) +  # Larger points
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.3, size = 1) +  # Thicker error bars
+  scale_color_manual(values = c("Time 1" = "forestgreen", "Time 2" = "blueviolet")) +
+  labs(x = "Item", y = "Mean Score ± SD", color = "Time", title = "AIM: Time 1 vs Time 2") +
+  theme_minimal(base_size = 14) +  # Larger base font size for better readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels and adjust size
+    axis.text.y = element_text(size = 12),  # Increase y-axis text size
+    strip.text = element_text(size = 14, face = "bold"),  # Increase size of facet labels
+    legend.title = element_text(size = 14),  # Increase legend title size
+    legend.text = element_text(size = 12),  # Increase legend text size
+    plot.title = element_text(size = 16, face = "bold"),  # Increase title size
+    plot.margin = margin(20, 20, 20, 20),  # Add margin to prevent clipping
+    panel.grid.major = element_blank(), # Remove major grid lines
+    panel.grid.minor = element_blank()  # Remove minor grid lines
+  )
+
+plot_iam <- ggplot(summary_data %>% filter(scale == "IAM"), aes(x = item, y = mean, color = time, group = time)) +
+  geom_point(size = 4) +
+  geom_line(size = 1.5) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.3, size = 1) +
+  scale_color_manual(values = c("Time 1" = "forestgreen", "Time 2" = "blueviolet")) +
+  labs(x = "Item", y = "Mean Score ± SD", color = "Time", title = "IAM: Time 1 vs Time 2") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+    axis.text.y = element_text(size = 12),
+    strip.text = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.margin = margin(20, 20, 20, 20),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+plot_fim <- ggplot(summary_data %>% filter(scale == "FIM"), aes(x = item, y = mean, color = time, group = time)) +
+  geom_point(size = 4) +
+  geom_line(size = 1.5) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.3, size = 1) +
+  scale_color_manual(values = c("Time 1" = "forestgreen", "Time 2" = "blueviolet")) +
+  labs(x = "Item", y = "Mean Score ± SD", color = "Time", title = "FIM: Time 1 vs Time 2") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+    axis.text.y = element_text(size = 12),
+    strip.text = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.margin = margin(20, 20, 20, 20),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+# Plot each separately
+plot_aim
+plot_iam
+plot_fim
+
+
+
+```
+
+
+## Paired T-Tests
+
+### Competency
+
+```{r}
+
+#In running code to merge T1 and T2 data sets I got an error. I manually checked and one participant at time 2 only entered half of their unique id. I ran code to fix the error so I could merge the data sets accurately. 
+
+
+# Fix any ID issues and merge datasets
+time2clean$id[time2clean$id == "5962"] <- "19885962"
+merged_data <- merge(time1clean, time2clean, by = "id", suffixes = c("_t1", "_t2"))
+
+# Identify columns to test
+comp_cols <- grep("^comp", names(time1clean), value = TRUE)
+
+# Run paired t-tests and handle constant/NA issues
+t_table_comp <- map_dfr(comp_cols, function(col) {
+  
+  x <- merged_data[[paste0(col, "_t1")]]
+  y <- merged_data[[paste0(col, "_t2")]]
+  valid <- complete.cases(x, y)
+  diffs <- x[valid] - y[valid]  
+  
+  if (length(unique(diffs)) <= 1) {
+    tibble(
+      Variable = col,
+      t_stat = NA,
+      df = NA,
+      mean_diff = round(mean(diffs), 3),
+      p_value = NA,
+      Cohens_d = NA,             
+      Significance = "Cannot compute"
+    )
+  } else {
+    t_res <- t.test(x[valid], y[valid], paired = TRUE)
+    cohen_d <- mean(diffs) / sd(diffs)
+    
+    # Format p-value nicely
+    p_val <- ifelse(t_res$p.value < 0.001, "<0.001", round(t_res$p.value, 3))
+    
+    tibble(
+      Variable = col,
+      t_stat = round(t_res$statistic, 3),
+      df = t_res$parameter,
+      mean_diff = round(t_res$estimate, 3),
+      p_value = p_val,
+      Cohens_d = round(cohen_d, 3),      
+      Significance = ifelse(t_res$p.value < 0.05, "Yes", "No")
+    )
+  }
+})
+
+# Render publication-ready HTML table with highlights
+nice_t_table_comp <- t_table_comp %>%
+  kable(
+    format = "html",
+    caption = "Paired t-Test Results with Cohen's d for Competency",
+    digits = 3,
+    col.names = c("Variable", "t-statistic", "df", "Mean Diff", "p-value", "Cohen's d", "Significance")
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE
+  ) %>%
+  row_spec(
+    which(t_table_comp$Significance == "Yes"),
+    bold = TRUE,
+    color = "green"
+  )
+
+# View the table
+nice_t_table_comp
+
+
+
+```
+
+### AIM, IAM, & FIM
+
+```{r}
+
+# Identify columns to test with multiple prefixes
+imp_cols <- grep("^(aim|iam|fim)", names(time1clean), value = TRUE)
+
+# Run paired t-tests and handle constant/NA issues
+t_table_imp <- map_dfr(imp_cols, function(col) {
+  
+  x <- merged_data[[paste0(col, "_t1")]]
+  y <- merged_data[[paste0(col, "_t2")]]
+  valid <- complete.cases(x, y)
+  diffs <- x[valid] - y[valid]  
+  
+  if (length(unique(diffs)) <= 1) {
+    tibble(
+      Variable = col,
+      t_stat = NA,
+      df = NA,
+      mean_diff = round(mean(diffs), 3),
+      p_value = NA,
+      Cohens_d = NA,             
+      Significance = "Cannot compute"
+    )
+  } else {
+    t_res <- t.test(x[valid], y[valid], paired = TRUE)
+    cohen_d <- mean(diffs) / sd(diffs)
+    
+    # Format p-value nicely
+    p_val <- ifelse(t_res$p.value < 0.001, "<0.001", round(t_res$p.value, 3))
+    
+    tibble(
+      Variable = col,
+      t_stat = round(t_res$statistic, 3),
+      df = t_res$parameter,
+      mean_diff = round(t_res$estimate, 3),
+      p_value = p_val,
+      Cohens_d = round(cohen_d, 3),      
+      Significance = ifelse(t_res$p.value < 0.05, "Yes", "No")
+    )
+  }
+})
+
+# Render publication-ready HTML table with highlights
+nice_t_table_imp <- t_table_imp %>%
+  kable(
+    format = "html",
+    caption = "Paired t-Test Results with Cohen's d for Implementation Outcomes",
+    digits = 3,
+    col.names = c("Variable", "t-statistic", "df", "Mean Diff", "p-value", "Cohen's d", "Significance")
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE
+  ) %>%
+  row_spec(
+    which(t_table_imp$Significance == "Yes"),
+    bold = TRUE,
+    color = "green"
+  )
+
+# View the table
+nice_t_table_imp
+
+
+
+
+```
